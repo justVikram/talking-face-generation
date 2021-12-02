@@ -1,0 +1,64 @@
+
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
+
+# 5 frames per input 1->pointer in dataloader 3->channels 5->no of images 128->height 255->width
+test_image = torch.rand(size=(1, 3, 5, 128, 255))
+# same input dimensions like in L3 architecture
+test_audio = torch.rand(size=(1, 1, 257, 199))
+
+
+class encoder(nn.Module):
+    def __init__(self):
+        super().__init__()
+
+        self.im_conv_1 = nn.Conv3d(3, 5, (2, 2, 2), 1, (1, 1, 1))
+        self.im_conv_2 = nn.Conv3d(5, 7, (2, 2, 1), 1, (1, 1, 1))
+        self.im_conv_3 = nn.Conv3d(7, 9, (1, 2, 1), 1, (1, 1, 1))
+        self.im_conv_4 = nn.Conv3d(9, 11, (1, 1, 1), 1, (1, 1, 1))
+        self.fc1 = nn.Linear(968, 256)
+
+        self.au_conv_1 = nn.Conv2d(1, 64, 3)
+        self.au_conv_2 = nn.Conv2d(64, 128, 3)
+        self.au_conv_3 = nn.Conv2d(128, 256, 3)
+        self.au_conv_4 = nn.Conv2d(256, 512, 3)
+        self.au_fc1 = nn.Linear(512, 256)
+
+    def forward(self, x, y):
+        x = F.leaky_relu(self.im_conv_1(x))
+        y = F.leaky_relu(self.au_conv_1(y))
+        x = F.max_pool3d(x, (1, 3, 3))
+        y = F.max_pool2d(y, 2)
+        x = F.leaky_relu(self.im_conv_2(x))
+        y = F.leaky_relu(self.au_conv_2(y))
+        x = F.max_pool3d(x, (1, 3, 3))
+        y = F.max_pool2d(y, 2)
+        x = F.leaky_relu(self.im_conv_3(x))
+        y = F.leaky_relu(self.au_conv_3(y))
+        x = F.max_pool3d(x, (1, 3, 3))
+        y = F.max_pool2d(y, 2)
+        x = F.leaky_relu(self.im_conv_4(x))
+        x = F.max_pool3d(x, (1, 3, 3))
+        x = x.view(-1, 968)
+        x = F.leaky_relu(self.fc1(x))
+        y = F.leaky_relu(self.au_conv_4(y))
+        y = F.max_pool2d(y, (28, 21))
+        y = y.view(-1, 512)
+        y = self.au_fc1(y)
+        x = x.view(-1)
+        y = y.view(-1)
+        return x, y
+
+
+model = encoder()
+
+
+print(test_image.shape, test_audio.shape)
+
+
+img_embed, audio_embed = model(test_image, test_audio)
+
+
+print(img_embed.detach().numpy().shape, audio_embed.detach().numpy().shape)
