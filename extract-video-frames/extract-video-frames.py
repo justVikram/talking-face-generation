@@ -127,7 +127,7 @@ def video_to_frames(input_loc, output_loc) -> int:
             cap.release()
             # Print stats
             print("Done extracting frames.\n%d frames extracted" % count)
-            print("It took %d seconds forconversion." % (time_end - time_start))
+            print("It took %d seconds for conversion." % (time_end - time_start))
             break
 
     return video_length
@@ -138,4 +138,4 @@ if __name__ == "__main__":
     output_loc = '/Users/avikram/Projects/Talking-Face-Generation/extract-video-frames/data/output'
     n_frames = video_to_frames(input_loc, output_loc)
     extract_audio(input_loc, output_loc)
-    chunkify_audio(os.path.join(output_loc, 'my_result.mp3'), 50)
+    chunkify_audio(os.path.join(output_loc, 'my_result.mp3'), 500)
