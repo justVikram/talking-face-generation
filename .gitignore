@@ -142,4 +142,4 @@ dmypy.json
 cython_debug/
 
 # End of https://www.toptal.com/developers/gitignore/api/python
-src/face_detection/detection/sfd
+face_detection/detection/sfd/
