@@ -1,15 +1,11 @@
 from os.path import dirname, join, basename, isfile
 from tqdm import tqdm
-
 from models.syncnet import SyncNet_color as SyncNet
 from models.decoder import Decoder
 import audio
-
 import torch
 from torch import nn
 from torch.nn import functional as F
-from torch import optim
-import torch.backends.cudnn as cudnn
 from torch.utils import data as data_utils
 import numpy as np
 
@@ -89,14 +85,14 @@ class Dataset(object):
     def __getitem__(self, idx):
 
         while 1:
-            idx = random.randint(0, len(self.all_videos) - 1)  ## any random file name from train is choosed
+            idx = random.randint(0, len(self.all_videos) - 1)  # any random file name from train is chosen
             vidname = self.all_videos[idx]
 
-            img_names = list(glob(join(vidname, '*.jpg')))  ## all the jpg images of the particular folder is stored
+            img_names = list(glob(join(vidname, '*.jpg')))  # all the jpg images of the particular folder is stored
             if len(img_names) <= 3 * syncnet_T:
                 continue
             img_name = random.choice(img_names)  # any image is chosen from that particular folder
-            wrong_img_name = random.choice(img_names)  ## random image
+            wrong_img_name = random.choice(img_names)  # random image
             while wrong_img_name == img_name:
                 wrong_img_name = random.choice(img_names)
 
@@ -107,7 +103,7 @@ class Dataset(object):
                 y = torch.zeros(1).float()
                 chosen = wrong_img_name
 
-            window_fnames = self.get_window(chosen)  ### get 5 frames from that video
+            window_fnames = self.get_window(chosen)  # get 5 frames from that video
             if window_fnames is None:
                 continue
 
@@ -124,32 +120,33 @@ class Dataset(object):
                     all_read = False
                     break
 
-                window.append(img)  ## all 5 images are appended
+                window.append(img)  # all 5 images are appended
 
             if not all_read: continue
 
             try:
                 wavpath = join(vidname, "audio.wav")
-                wav = audio.load_wav(wavpath, hparams.sample_rate)  ## the entire wav file is loaded
+                wav = audio.load_wav(wavpath, hparams.sample_rate)  # the entire wav file is loaded
 
-                orig_mel = audio.melspectrogram(wav).T  ### mel of entire audio
+                orig_mel = audio.melspectrogram(wav).T  # mel of entire audio
             except Exception as e:
                 continue
 
-            mel = self.crop_audio_window(orig_mel.copy(), img_name)  ## mel wrt to the frame
+            mel = self.crop_audio_window(orig_mel.copy(), img_name)  # mel wrt to the frame
 
             if (mel.shape[0] != syncnet_mel_step_size):
                 continue
 
             # H x W x 3 * T
-            x = np.concatenate(window, axis=2) / 255.  ## the whole window of 5 frames is then concatenated
+            x = np.concatenate(window, axis=2) / 255.  # the whole window of 5 frames is then concatenated
             x = x.transpose(2, 0, 1)
-            x = x[:, x.shape[1] // 2:]  ## upper half is masked
+            x = x[:, x.shape[1] // 2:]  # upper half is masked
 
             x = torch.FloatTensor(x)
             mel = torch.FloatTensor(mel.T).unsqueeze(0)
 
-            return x, mel, y  ## x are the frames, m is the mel of true audio and y is either 0 or 1 depending on the true, false condition
+            return x, mel, y  # x are the frames,
+            # m is the mel of true audio and y is either 0 or 1 depending on the true, false condition
 
 
 logloss = nn.BCELoss()
@@ -181,33 +178,15 @@ def train(device, model, train_data_loader, test_data_loader, optimizer,
         for step, (x, mel, y) in prog_bar:
 
             x = x.to(device)
-            print(x.shape)  # 16,15,48,96
-            # exit()
             mel = mel.to(device)
-            print(mel.shape)
-            # exit()
-            a, v = syncnet(mel, x)  ##16x512 and 16x512
-
-            # print(a[1])
-            print(a.shape)
-            # exit()
-
+            a, v = syncnet(mel, x)  # 16x512 and 16x512
             l = torch.cat((a, v), -1)
-            # print(l.shape)
-            # exit()
-            # x = torch.unsqueeze(x,dim=1)
             l = l.view(16, 1024, 1, 1)
-            print('alalal')
-            print(l.shape)
-            # exit()
 
             model.train()
             optimizer.zero_grad()
-            lmao = model(l)
-
-            ok = F.interpolate(lmao, size=(48, 96))
-            print(ok.size())
-
+            dec_output = model(l)
+            ok = F.interpolate(dec_output, size=(48, 96))
             p, q = syncnet(mel, ok)
 
             y = y.to(device)
@@ -298,7 +277,6 @@ if __name__ == "__main__":
 
     model = Decoder().to(device)
     print(model)
-    # exit()
     print('total trainable params {}'.format(sum(p.numel() for p in model.parameters() if p.requires_grad)))
 
     optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)

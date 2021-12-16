@@ -1,23 +1,19 @@
-
 import sys
 
 if sys.version_info[0] < 3 and sys.version_info[1] < 2:
     raise Exception("Must be using >= Python 3.2")
 
-from os import listdir, path
+from os import path
 
 if not path.isfile('face_detection/detection/sfd/s3fd.pth'):
-    raise FileNotFoundError('Save the s3fd model to face_detection/detection/sfd/s3fd.pth \
-							before running this script!')
+    raise FileNotFoundError(
+        'Save the s3fd model to face_detection/detection/sfd/s3fd.pth before running this script!')
 
-import multiprocessing as mp
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import numpy as np
 import argparse, os, cv2, traceback, subprocess
 from tqdm import tqdm
 from glob import glob
-import audio
-from hparams import hparams as hp
 
 import face_detection
 
@@ -35,8 +31,6 @@ fa = [face_detection.FaceAlignment(face_detection.LandmarksType._2D, flip_input=
 
 template = 'ffmpeg -loglevel panic -y -i {} -strict -2 {}'
 
-
-# template2 = 'ffmpeg -hide_banner -loglevel panic -threads 1 -y -i {} -async 1 -ac 1 -vn -acodec pcm_s16le -ar 16000 {}'
 
 def process_video_file(vfile, args, gpu_id):
     video_stream = cv2.VideoCapture(vfile)
